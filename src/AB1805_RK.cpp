@@ -593,7 +593,6 @@ bool AB1805::deepPowerDown(int seconds, bool loopToSleep) {
 
     _log.error("didn't power down");
     delay(10);
-    // System.reset();
 
     return true;
 }
