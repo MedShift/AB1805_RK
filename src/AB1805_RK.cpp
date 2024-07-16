@@ -24,7 +24,7 @@ void AB1805::setup(bool callBegin) {
     if (callBegin) {
         wire.begin();
     }
-    
+
     if (detectChip()) {
         updateWakeReason();
 
@@ -138,7 +138,7 @@ bool AB1805::resetConfig(uint32_t flags) {
 
     if ((flags & RESET_PRESERVE_REPEATING_TIMER) != 0) {
         maskRegister(REG_TIMER_CTRL, ~REG_TIMER_CTRL_RPT_MASK, REG_TIMER_CTRL_DEFAULT & ~REG_TIMER_CTRL_RPT_MASK, false);
-    }  
+    }
     else {
         writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_DEFAULT, false);
     }
@@ -189,16 +189,16 @@ bool AB1805::updateWakeReason() {
     else if (isBitSet(REG_SLEEP_CTRL, REG_SLEEP_CTRL_SLST)) {
         reason = "DEEP_POWER_DOWN";
         wakeReason = WakeReason::DEEP_POWER_DOWN;
-    }    
+    }
     else if ((status & REG_STATUS_TIM) != 0) {
         reason = "COUNTDOWN_TIMER";
         wakeReason = WakeReason::COUNTDOWN_TIMER;
-        clearRegisterBit(REG_STATUS, REG_STATUS_TIM);            
+        clearRegisterBit(REG_STATUS, REG_STATUS_TIM);
     }
     else if ((status & REG_STATUS_ALM) != 0) {
         reason = "ALARM";
         wakeReason = WakeReason::ALARM;
-        clearRegisterBit(REG_STATUS, REG_STATUS_ALM);            
+        clearRegisterBit(REG_STATUS, REG_STATUS_ALM);
     }
 
     if (reason) {
@@ -224,7 +224,7 @@ bool AB1805::setWDT(int seconds) {
 
         watchdogSecs = 0;
         watchdogUpdatePeriod = 0;
-    } 
+    }
     else {
         // Use 1/4 Hz clock
         int fourSecs = seconds / 4;
@@ -244,7 +244,7 @@ bool AB1805::setWDT(int seconds) {
         watchdogUpdatePeriod = (fourSecs * 2000);
     }
 
-    return bResult;      
+    return bResult;
 }
 
 bool AB1805::setRtcFromSystem() {
@@ -310,7 +310,7 @@ bool AB1805::getRtcAsTime(time_t &time) {
         time = mktime(&tmstruct);
     }
 
-    return bResult;   
+    return bResult;
 }
 
 bool AB1805::getRtcAsTm(struct tm *timeptr) {
@@ -350,12 +350,12 @@ bool AB1805::testEN() {
     // but, but this is OK.
     writeRegister(REG_OSC_STATUS, 0x00);
 
-    // Set PWR2 to 0 (default 1), this allows PWR/nIRQ2 to be normal open-drain 
+    // Set PWR2 to 0 (default 1), this allows PWR/nIRQ2 to be normal open-drain
     // Set OUTB to 1 (default 0), this should set EN low via the N-channel MOSFET
     maskRegister(REG_CTRL_1, ~REG_CTRL_1_PWR2, REG_CTRL_1_OUTB);
 
     return true;
-}  
+}
 #endif
 
 bool AB1805::interruptAtTime(time_t time) {
@@ -379,7 +379,7 @@ bool AB1805::repeatingInterrupt(struct tm *timeptr, uint8_t rptValue) {
     }
 
     // Clear any existing alarm (ALM) interrupt in status register
-    bResult = clearRegisterBit(REG_STATUS, REG_STATUS_ALM);            
+    bResult = clearRegisterBit(REG_STATUS, REG_STATUS_ALM);
     if (!bResult) {
         _log.error(errorMsg, __LINE__);
         return false;
@@ -414,7 +414,7 @@ bool AB1805::repeatingInterrupt(struct tm *timeptr, uint8_t rptValue) {
     }
 #endif
 
-    // Set FOUT/nIRQ control in OUT1S in Control2 for 
+    // Set FOUT/nIRQ control in OUT1S in Control2 for
     // "nAIRQ if AIE is set, else OUT"
     bResult = maskRegister(REG_CTRL_2, ~REG_CTRL_2_OUT1S_MASK, REG_CTRL_2_OUT1S_nAIRQ);
     if (!bResult) {
@@ -435,7 +435,7 @@ bool AB1805::repeatingInterrupt(struct tm *timeptr, uint8_t rptValue) {
         _log.error(errorMsg, __LINE__);
         return false;
     }
-    
+
     return true;
 }
 
@@ -468,7 +468,7 @@ bool AB1805::clearRepeatingInterrupt() {
 }
 
 
-bool AB1805::interruptCountdownTimer(int value, bool minutes) {
+bool AB1805::interruptCountdownTimer(int value, bool minutes, bool level) {
     static const char *errorMsg = "failure in interruptCountdownTimer %d";
     bool bResult;
 
@@ -479,7 +479,7 @@ bool AB1805::interruptCountdownTimer(int value, bool minutes) {
         return false;
     }
 
-    // Set FOUT/nIRQ control in OUT1S in Control2 for 
+    // Set FOUT/nIRQ control in OUT1S in Control2 for
     // "nIRQ if at least one interrupt is enabled, else OUT"
     bResult = maskRegister(REG_CTRL_2, ~REG_CTRL_2_OUT1S_MASK, REG_CTRL_2_OUT1S_nIRQ);
     if (!bResult) {
@@ -487,7 +487,7 @@ bool AB1805::interruptCountdownTimer(int value, bool minutes) {
         return false;
     }
 
-    bResult = setCountdownTimer(value, minutes);
+    bResult = setCountdownTimer(value, minutes, level);
     if (!bResult) {
         _log.error(errorMsg, __LINE__);
         return false;
@@ -582,7 +582,7 @@ bool AB1805::deepPowerDown(int seconds) {
         return false;
     }
 
-    // _log.trace("delay in case we didn't power down");   
+    // _log.trace("delay in case we didn't power down");
     unsigned long start = millis();
     while(millis() - start < (unsigned long) (seconds * 1000)) {
         _log.info("REG_SLEEP_CTRL=0x%2x", readRegister(REG_SLEEP_CTRL));
@@ -591,7 +591,7 @@ bool AB1805::deepPowerDown(int seconds) {
 
     _log.error("didn't power down");
     delay(10);
-    System.reset();
+    // System.reset();
 
     return true;
 }
@@ -637,7 +637,7 @@ bool AB1805::checkVBAT(uint8_t mask, bool &isAbove) {
         // Disable trickle before checking voltage
         setTrickle(0);
 
-        // Do we need a delay here?   
+        // Do we need a delay here?
     }
 
     uint8_t aStatus;
@@ -656,7 +656,7 @@ bool AB1805::checkVBAT(uint8_t mask, bool &isAbove) {
 
 
 
-bool AB1805::setCountdownTimer(int value, bool minutes) {
+bool AB1805::setCountdownTimer(int value, bool minutes, bool level) {
     static const char *errorMsg = "failure in setCountdownTimer %d";
     bool bResult;
 
@@ -668,6 +668,7 @@ bool AB1805::setCountdownTimer(int value, bool minutes) {
     }
 
     // Stop countdown timer if already running since it can't be set while running
+
     bResult = writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_DEFAULT);
     if (!bResult) {
         _log.error(errorMsg, __LINE__);
@@ -694,11 +695,16 @@ bool AB1805::setCountdownTimer(int value, bool minutes) {
         return false;
     }
 
-    // Set the TFS frequency to 1/60 Hz for minutes or 1 Hz for seconds 
+    // Set the TFS frequency to 1/60 Hz for minutes or 1 Hz for seconds
     uint8_t tfs = (minutes ? REG_TIMER_CTRL_TFS_1_60 : REG_TIMER_CTRL_TFS_1);
 
+    uint8_t tm = 0;
+    if(level) {
+        tm = REG_TIMER_CTRL_TM;
+    }
+
     // Enable countdown timer (TE = 1) in countdown timer control register
-    bResult = writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_TE | tfs);
+    bResult = writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_TE | tfs | tm);
     if (!bResult) {
         _log.error(errorMsg, __LINE__);
         return false;
@@ -755,7 +761,7 @@ bool AB1805::readRegisters(uint8_t regAddr, uint8_t *array, size_t num, bool loc
     if (lock) {
         wire.unlock();
     }
-    return bResult;    
+    return bResult;
 }
 
 
@@ -763,7 +769,7 @@ uint8_t AB1805::readRegister(uint8_t regAddr, bool lock) {
     uint8_t value = 0;
 
     (void) readRegister(regAddr, value, lock);
-    
+
     return value;
 }
 
@@ -813,7 +819,7 @@ bool AB1805::maskRegister(uint8_t regAddr, uint8_t andValue, uint8_t orValue, bo
     bResult = readRegister(regAddr, value, false);
     if (bResult) {
         uint8_t newValue = (value & andValue) | orValue;
-        
+
         if (newValue != value) {
             bResult = writeRegister(regAddr, newValue, false);
         }
@@ -830,7 +836,7 @@ bool AB1805::isBitClear(uint8_t regAddr, uint8_t bitMask, bool lock) {
     uint8_t value;
 
     bResult = readRegister(regAddr, value, lock);
-    
+
     return bResult && ((value & bitMask) == 0);
 }
 
@@ -839,7 +845,7 @@ bool AB1805::isBitSet(uint8_t regAddr, uint8_t bitMask, bool lock) {
     uint8_t value;
 
     bResult = readRegister(regAddr, value, lock);
-    
+
     return bResult && ((value & bitMask) != 0);
 }
 
@@ -983,12 +989,12 @@ bool AB1805::writeRam(size_t ramAddr, const uint8_t *data, size_t dataLen, bool 
 
 // [static]
 String AB1805::tmToString(const struct tm *timeptr) {
-    return String::format("%04d-%02d-%02d %02d:%02d:%02d", 
+    return String::format("%04d-%02d-%02d %02d:%02d:%02d",
         timeptr->tm_year + 1900, timeptr->tm_mon + 1, timeptr->tm_mday,
         timeptr->tm_hour, timeptr->tm_min, timeptr->tm_sec);
 }
 
-// [static] 
+// [static]
 void AB1805::tmToRegisters(const struct tm *timeptr, uint8_t *array, bool includeYear) {
     uint8_t *p = array;
     *p++ = valueToBcd(timeptr->tm_sec);
@@ -1003,7 +1009,7 @@ void AB1805::tmToRegisters(const struct tm *timeptr, uint8_t *array, bool includ
 }
 
 
-// [static] 
+// [static]
 void AB1805::registersToTm(const uint8_t *array, struct tm *timeptr, bool includeYear) {
     const uint8_t *p = array;
     timeptr->tm_sec = bcdToValue(*p++);
@@ -1017,12 +1023,12 @@ void AB1805::registersToTm(const uint8_t *array, struct tm *timeptr, bool includ
     timeptr->tm_wday = bcdToValue(*p++);
 }
 
-// [static] 
+// [static]
 int AB1805::bcdToValue(uint8_t bcd) {
     return (bcd >> 4) * 10 + (bcd & 0x0f);
 }
 
-// [static] 
+// [static]
 uint8_t AB1805::valueToBcd(int value) {
     int tens = (value / 10) % 10;
     int ones = value % 10;
@@ -1039,7 +1045,7 @@ void AB1805::systemEvent(system_event_t event, int param) {
     }
 }
 
-// [static] 
+// [static]
 void AB1805::systemEventStatic(system_event_t event, int param) {
     if (instance) {
         instance->systemEvent(event, param);
