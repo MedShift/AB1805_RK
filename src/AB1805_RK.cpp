@@ -20,7 +20,7 @@ AB1805::~AB1805() {
 }
 
 
-void AB1805::setup(bool callBegin) {
+bool AB1805::setup(bool callBegin) {
     if (callBegin) {
         wire.begin();
     }
@@ -39,12 +39,12 @@ void AB1805::setup(bool callBegin) {
 
             _log.info("set system clock from RTC %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
         }
-    }
-    else {
+        System.on(reset, systemEventStatic);
+        return true;
+    } else {
         _log.error("failed to detect AB1805");
+        return false;
     }
-
-    System.on(reset, systemEventStatic);
 }
 
 void AB1805::loop() {
@@ -154,7 +154,7 @@ bool AB1805::resetConfig(uint32_t flags) {
         // and ACAL to 0 (however REG_OSC_CTRL_DEFAULT already sets ACAL to 0)
         oscCtrl |= REG_OSC_CTRL_OSEL | REG_OSC_CTRL_FOS;
     }
-    // oscCtrl |= REG_OSC_CTRL_FOS;
+    oscCtrl |= REG_OSC_CTRL_FOS;
     writeRegister(REG_CONFIG_KEY, 0xA1, false); // Needed to set config key to update REG_OSC_CTRL
     writeRegister(REG_OSC_CTRL, oscCtrl, false);
     writeRegister(REG_TRICKLE, REG_TRICKLE_DEFAULT, false);
@@ -323,8 +323,6 @@ bool AB1805::getRtcAsTm(struct tm *timeptr) {
         bResult = readRegisters(REG_HUNDREDTH, array, sizeof(array));
         if (bResult) {
             registersToTm(&array[1], timeptr, true);
-
-            _log.info("getRtcAsTm %s", tmToString(timeptr).c_str());
         }
     }
     if (!bResult) {
@@ -496,7 +494,7 @@ bool AB1805::interruptCountdownTimer(int value, bool minutes, bool level) {
     return true;
 }
 
-bool AB1805::deepPowerDown(int seconds) {
+bool AB1805::deepPowerDown(int seconds, bool loopToSleep) {
     static const char *errorMsg = "failure in deepPowerDown %d";
     bool bResult;
 
@@ -546,7 +544,7 @@ bool AB1805::deepPowerDown(int seconds) {
     }
 #endif
 
-    bResult = setCountdownTimer(seconds, false);
+    bResult = setCountdownTimer(seconds, false, true);
     if (!bResult) {
         _log.error(errorMsg, __LINE__);
         return false;
@@ -582,16 +580,17 @@ bool AB1805::deepPowerDown(int seconds) {
         return false;
     }
 
-    // _log.trace("delay in case we didn't power down");
-    unsigned long start = millis();
-    while(millis() - start < (unsigned long) (seconds * 1000)) {
-        _log.info("REG_SLEEP_CTRL=0x%2x", readRegister(REG_SLEEP_CTRL));
-        delay(1000);
+    // _log.trace("delay in case we didn't power down");   
+    if(loopToSleep) {
+        unsigned long start = millis();
+        while(millis() - start < (unsigned long) (seconds * 1000)) {
+            _log.info("REG_SLEEP_CTRL=0x%2x", readRegister(REG_SLEEP_CTRL));
+            delay(1000);
+        }
     }
 
     _log.error("didn't power down");
     delay(10);
-    // System.reset();
 
     return true;
 }
