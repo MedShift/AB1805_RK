@@ -343,12 +343,7 @@ public:
 
      * @param level True means the timer interrupt will act as a level shift rather
      * than a pulse
-<<<<<<< Updated upstream
-     * 
-
-=======
      *
->>>>>>> Stashed changes
      * @return true on success or false if an error occurs.
      *
      * The countdown timer works even if the RTC has not been set yet, but is more
