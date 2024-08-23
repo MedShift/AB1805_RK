@@ -48,7 +48,7 @@ bool AB1805::setup(bool callBegin) {
 }
 
 void AB1805::loop() {
-    if (!timeSet && Time.isValid() && Particle.timeSyncedLast() != 0) {
+    if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
         timeSet = true;
 
         time_t time = Time.now();
@@ -63,7 +63,6 @@ void AB1805::loop() {
     if (watchdogUpdatePeriod) {
         if (millis() - lastWatchdogMillis >= watchdogUpdatePeriod) {
             lastWatchdogMillis = millis();
-
             // Reset the watchdog timer
             setWDT();
         }
