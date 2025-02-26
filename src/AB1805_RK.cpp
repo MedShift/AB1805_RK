@@ -1,7 +1,5 @@
 #include "AB1805_RK.h"
 
-
-
 static Logger _log("app.ab1805");
 
 // Define SET_D8_LOW on FeatherAB1805v1 boards as the pull-up is wired to 3V3R instead
@@ -9,7 +7,6 @@ static Logger _log("app.ab1805");
 #define SET_D8_LOW
 
 AB1805 *AB1805::instance = 0;
-
 
 AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
     instance = this;
@@ -19,12 +16,11 @@ AB1805::~AB1805() {
 
 }
 
-
 bool AB1805::setup(bool callBegin) {
     if (callBegin) {
         wire.begin();
     }
-
+    
     if (detectChip()) {
         updateWakeReason();
 
@@ -48,17 +44,17 @@ bool AB1805::setup(bool callBegin) {
 }
 
 void AB1805::loop() {
-    if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
-        timeSet = true;
+    // if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
+    //     timeSet = true;
 
-        time_t time = Time.now();
-        setRtcFromTime(time);
+    //     time_t time = Time.now();
+    //     setRtcFromTime(time);
 
-        time = 0;
-        getRtcAsTime(time);
-        _log.info("set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
+    //     time = 0;
+    //     getRtcAsTime(time);
+    //     _log.info(">>>>>>>>>>>>>>> set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
 
-    }
+    // }
 
     if (watchdogUpdatePeriod) {
         if (millis() - lastWatchdogMillis >= watchdogUpdatePeriod) {
@@ -246,14 +242,14 @@ bool AB1805::setWDT(int seconds) {
     return bResult;
 }
 
-bool AB1805::setRtcFromSystem() {
-    if (Time.isValid()) {
-        return setRtcFromTime(Time.now());
-    }
-    else {
-        return false;
-    }
-}
+// bool AB1805::setRtcFromSystem() {
+//     if (Time.isValid()) {
+//         return setRtcFromTime(Time.now());
+//     }
+//     else {
+//         return false;
+//     }
+// }
 
 bool AB1805::setRtcFromTime(time_t time, bool lock) {
     struct tm *tm = gmtime(&time);

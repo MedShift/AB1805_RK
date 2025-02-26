@@ -418,13 +418,13 @@ public:
      */
     bool checkVBAT(uint8_t mask, bool &isAbove);
 
-    /**
-     * @brief Set the RTC from the system clock
-     *
-     * This is called automatically from AB1805::loop() when the time is updated from the cloud.
-     * You normally don't need to call this yourself.
-     */
-    bool setRtcFromSystem();
+    // /**
+    //  * @brief Set the RTC from the system clock
+    //  *
+    //  * This is called automatically from AB1805::loop() when the time is updated from the cloud.
+    //  * You normally don't need to call this yourself.
+    //  */
+    // bool setRtcFromSystem();
 
     /**
      * @brief Sets the RTC from a time_t
