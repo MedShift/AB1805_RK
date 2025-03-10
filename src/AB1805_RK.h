@@ -7,6 +7,7 @@
 
 #define AB1805_ADDRESS 0x69
 
+
 /**
  * @brief Class for using the AB1805/AM1805 RTC/watchdog chip
  *
@@ -418,13 +419,13 @@ public:
      */
     bool checkVBAT(uint8_t mask, bool &isAbove);
 
-    /**
-     * @brief Set the RTC from the system clock
-     *
-     * This is called automatically from AB1805::loop() when the time is updated from the cloud.
-     * You normally don't need to call this yourself.
-     */
-    bool setRtcFromSystem();
+    // /**
+    //  * @brief Set the RTC from the system clock
+    //  *
+    //  * This is called automatically from AB1805::loop() when the time is updated from the cloud.
+    //  * You normally don't need to call this yourself.
+    //  */
+    // bool setRtcFromSystem();
 
     /**
      * @brief Sets the RTC from a time_t
@@ -1033,5 +1034,8 @@ protected:
     static AB1805 *instance;
 
 };
+
+extern AB1805 ab1805;
+extern bool isAb1805Setup;  // Boolean to indicate AB1805 device configured
 
 #endif /* __AB1805RK_H */
