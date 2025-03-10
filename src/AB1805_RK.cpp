@@ -1,6 +1,5 @@
+#include "defines.h"
 #include "AB1805_RK.h"
-
-
 
 static Logger _log("app.ab1805");
 
@@ -10,6 +9,8 @@ static Logger _log("app.ab1805");
 
 AB1805 *AB1805::instance = 0;
 
+AB1805 ab1805;
+bool isAb1805Setup;
 
 AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
     instance = this;
@@ -19,12 +20,11 @@ AB1805::~AB1805() {
 
 }
 
-
 bool AB1805::setup(bool callBegin) {
     if (callBegin) {
         wire.begin();
     }
-
+    
     if (detectChip()) {
         updateWakeReason();
 
@@ -48,6 +48,8 @@ bool AB1805::setup(bool callBegin) {
 }
 
 void AB1805::loop() {
+
+#ifndef USE_TIME_MANAGER
     if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
         timeSet = true;
 
@@ -56,9 +58,10 @@ void AB1805::loop() {
 
         time = 0;
         getRtcAsTime(time);
-        _log.info("set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
+        _log.info(">>>>>>>>>>>>>>> set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
 
     }
+#endif
 
     if (watchdogUpdatePeriod) {
         if (millis() - lastWatchdogMillis >= watchdogUpdatePeriod) {
@@ -246,14 +249,14 @@ bool AB1805::setWDT(int seconds) {
     return bResult;
 }
 
-bool AB1805::setRtcFromSystem() {
-    if (Time.isValid()) {
-        return setRtcFromTime(Time.now());
-    }
-    else {
-        return false;
-    }
-}
+// bool AB1805::setRtcFromSystem() {
+//     if (Time.isValid()) {
+//         return setRtcFromTime(Time.now());
+//     }
+//     else {
+//         return false;
+//     }
+// }
 
 bool AB1805::setRtcFromTime(time_t time, bool lock) {
     struct tm *tm = gmtime(&time);
