@@ -7,6 +7,7 @@
 
 #define AB1805_ADDRESS 0x69
 
+
 /**
  * @brief Class for using the AB1805/AM1805 RTC/watchdog chip
  *
@@ -1033,5 +1034,8 @@ protected:
     static AB1805 *instance;
 
 };
+
+extern AB1805 ab1805;
+extern bool isAb1805Setup;  // Boolean to indicate AB1805 device configured
 
 #endif /* __AB1805RK_H */
