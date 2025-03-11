@@ -53,8 +53,8 @@ void AB1805::loop() {
     if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
         timeSet = true;
 
-    //     time_t time = Time.now();
-    //     setRtcFromTime(time);
+        time_t time = Time.now();
+        setRtcFromTime(time);
 
         time = 0;
         getRtcAsTime(time);
