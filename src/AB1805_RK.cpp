@@ -49,20 +49,6 @@ bool AB1805::setup(bool callBegin) {
 
 void AB1805::loop() {
 
-#ifndef USE_TIME_MANAGER
-    if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
-        timeSet = true;
-
-        time_t time = Time.now();
-        setRtcFromTime(time);
-
-        time = 0;
-        getRtcAsTime(time);
-        _log.info(">>>>>>>>>>>>>>> set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
-
-    }
-#endif
-
     if (watchdogUpdatePeriod) {
         if (millis() - lastWatchdogMillis >= watchdogUpdatePeriod) {
             lastWatchdogMillis = millis();
