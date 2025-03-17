@@ -10,7 +10,6 @@ static Logger _log("app.ab1805");
 AB1805 *AB1805::instance = 0;
 
 AB1805 ab1805;
-bool isAb1805Setup;
 
 AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
     instance = this;

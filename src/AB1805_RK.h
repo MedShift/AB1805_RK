@@ -7,6 +7,7 @@
 
 #define AB1805_ADDRESS 0x69
 
+#define NUM_AB1805_RTC_FOUT_CONFIG_RETRIES 3
 
 /**
  * @brief Class for using the AB1805/AM1805 RTC/watchdog chip
@@ -81,6 +82,23 @@ public:
         return *this;
     };
 
+    /**
+     * @brief Method to return the initialization state of this RTC
+     * @return bool true = initialized, false = not initialized
+     */
+    bool isInitialized()
+    {
+        return isAb1805Setup;
+    }
+
+    /**
+     * @brief Method to return the initialization state of this RTC
+     */
+    void setInitialized(const bool initState)
+    {
+        isAb1805Setup = initState;
+    }
+    
     /**
      * @brief Checks the I2C bus to make sure there is an AB1805 present
      *
@@ -1033,9 +1051,10 @@ protected:
      */
     static AB1805 *instance;
 
+    bool isAb1805Setup;     // Initialization state
+    
 };
 
 extern AB1805 ab1805;
-extern bool isAb1805Setup;  // Boolean to indicate AB1805 device configured
 
 #endif /* __AB1805RK_H */
