@@ -41,6 +41,9 @@ public:
      */
     AB1805(TwoWire &wire = Wire, uint8_t i2cAddr = AB1805_ADDRESS);
 
+
+    int xtOscillatorDigitalCalibration(int adjVal);
+
     /**
      * @brief Destructor. Not normally used as this object is typically a global object.
      */
@@ -76,7 +79,8 @@ public:
      */
     AB1805 &withFOUT(pin_t pin) {
         foutPin = pin;
-        pinMode(foutPin, OUTPUT);
+        // pinMode(foutPin, OUTPUT);
+        pinMode(foutPin, INPUT);
         return *this;
     };
 
@@ -93,6 +97,14 @@ public:
      * @return true if RC oscillator is being used, false if XT (crystal)
      */
     bool usingRCOscillator();
+
+    /**
+     * @brief Sets the SQW Register (0x13)
+     * @param enable - SQE field
+     * @param frequency - SQFS
+     * @return true on successfuly write
+     */
+    bool setSquareWaveOutput(bool enable, uint8_t frequency, bool lock = true);
 
     /**
      * @brief Returns true if the RTC has been set
@@ -561,6 +573,21 @@ public:
     bool writeRegisters(uint8_t regAddr, const uint8_t *array, size_t num, bool lock = true);
 
     /**
+     * @brief Writes a AB1805 register (single byte) and reads back the write for confirmation
+     *
+     * @param regAddr Register address to write to (0x00 - 0xff)
+     *
+     * @param value This value is written to the register
+     *
+     * @param lock Lock the I2C bus. Default = true. Pass false if surrounding a block of
+     * related calls with a wire.lock() and wire.unlock() so the block cannot be interrupted
+     * with other I2C operations.
+     *
+     * @return true on success or false on error
+     */
+    bool writeRegisterWithReadBack(uint8_t regAddr, uint8_t value, bool lock=true);
+
+    /**
      * @brief Writes a AB1805 register (single byte) with masking of existing value
      *
      * @param regAddr Register address to read from and write to (0x00 - 0xff)
@@ -842,6 +869,9 @@ public:
     static const uint8_t   REG_INT_MASK_DEFAULT     = 0xe0;      //!< Interrupt mask, default 0b11100000 (CEB | IM=1/4 seconds)
     static const uint8_t REG_SQW                    = 0x13;      //!< Square wave output control
     static const uint8_t   REG_SQW_SQWE             = 0x80;      //!< Square wave output control, enable
+    static const uint8_t   REG_SQW_CLEAR_MASK       = 0x60;      //!< Square wave output control, mask to clear all but the reserved bits (5, 6)
+    static const uint8_t   REG_SQW_SQFS_32768_HZ    = 0x01;      //!< Square wave output control, SQFS 32768 Hz setting
+    static const uint8_t   REG_SQW_SQFS_MAX         = 0x1F;      //!< Square wave output control, max value that can be set in the SQFS bits (first 5 bits)
     static const uint8_t   REG_SQW_DEFAULT          = 0x26;      //!< Square wave output control, default 0b00100110
     static const uint8_t REG_CAL_XT                 = 0x14;      //!< Calibration for the XT oscillator
     static const uint8_t REG_CAL_RC_HIGH            = 0x15;      //!< Calibration for the RC oscillator, upper 8 bits
