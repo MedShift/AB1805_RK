@@ -41,9 +41,6 @@ public:
      */
     AB1805(TwoWire &wire = Wire, uint8_t i2cAddr = AB1805_ADDRESS);
 
-
-    int xtOscillatorDigitalCalibration(int adjVal);
-
     /**
      * @brief Destructor. Not normally used as this object is typically a global object.
      */
