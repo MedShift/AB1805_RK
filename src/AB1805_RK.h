@@ -76,7 +76,6 @@ public:
      */
     AB1805 &withFOUT(pin_t pin) {
         foutPin = pin;
-        // pinMode(foutPin, OUTPUT);
         pinMode(foutPin, INPUT);
         return *this;
     };
