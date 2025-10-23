@@ -99,7 +99,7 @@ public:
      * @brief Sets the SQW Register (0x13)
      * @param enable - SQE field
      * @param frequency - SQFS
-     * @return true on successfuly write
+     * @return true on successfully write
      */
     bool setSquareWaveOutput(bool enable, uint8_t frequency, bool lock = true);
 
