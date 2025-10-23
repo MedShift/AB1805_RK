@@ -139,12 +139,6 @@ bool AB1805::setSquareWaveOutput(bool enable, uint8_t frequency, bool lock) {
         val |= REG_SQW_SQWE;
     }
     val |= frequency;
-    success = writeRegister(REG_SQW, val, lock);
-    if(!success) {
-        _log.error("setSquareWaveOutput: failed to write %u to REG_SQW", val);
-        return false;
-    }
-
     // Write with readback
     success = writeRegisterWithReadBack(REG_SQW, val, lock);
     if(!success) {
