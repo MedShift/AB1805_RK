@@ -854,7 +854,7 @@ bool AB1805::writeRegisterWithReadBack(uint8_t regAddr, uint8_t value, bool lock
     // Confirm the write by reading back the register
     success = readRegister(regAddr, read);
     if(!success) {
-        _log.error("writeRegisterWithReadBack: failed from register %u", regAddr);
+        _log.error("writeRegisterWithReadBack: failed to read from register %u", regAddr);
         return false;
     }
     if(value != read) {
