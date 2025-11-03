@@ -55,8 +55,11 @@ public:
      * @brief Call this from main setup() to initialize the library.
      *
      * @param callBegin Whether to call wire.begin(). Default is true.
+     * @param seconds watchdog timer seconds
      */
     bool setup(bool callBegin = true, int seconds=AB1805::WATCHDOG_MAX_SECONDS);
+
+    bool isSetup();
 
     /**
      * @brief Call this from main loop(). Should be called on every call to loop().
@@ -1039,10 +1042,7 @@ protected:
      */
     WakeReason wakeReason = WakeReason::UNKNOWN;
 
-    /**
-     * @brief Singleton for AB1805. Set in constructor
-     */
-    static AB1805 *instance;
+    bool isSetupFlag;
 
 };
 

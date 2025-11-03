@@ -6,7 +6,9 @@ static Logger _log("app.ab1805");
 // of 3V3 which can cause current leakages when powering down using EN.
 #define SET_D8_LOW
 
-AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {}
+AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
+    isSetupFlag = false;
+}
 
 AB1805::~AB1805() {}
 
@@ -31,7 +33,12 @@ bool AB1805::setup(bool callBegin, int seconds) {
         return false;
     }
 
+    isSetupFlag = true;
     return true;
+}
+
+bool AB1805::isSetup() {
+    return isSetupFlag;
 }
 
 void AB1805::loop() {
@@ -282,10 +289,6 @@ bool AB1805::setRtcFromTime(time_t time, bool lock) {
 }
 
 bool AB1805::setRtcFromTm(const struct tm *timeptr, bool lock) {
-    if(lastOscillatorMode || lastOscillatorFailure) {
-        _log.error("can't set time if the oscillator is not good lastOscillatorMode=%d, lastOscillatorFailure=%d", lastOscillatorMode, lastOscillatorFailure);
-        return false;
-    }
     static const char *errorMsg = "failure in setRtcFromTm %d";
     uint8_t array[8];
 
