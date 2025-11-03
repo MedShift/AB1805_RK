@@ -1,65 +1,40 @@
 #include "AB1805_RK.h"
 
-
-
 static Logger _log("app.ab1805");
 
 // Define SET_D8_LOW on FeatherAB1805v1 boards as the pull-up is wired to 3V3R instead
 // of 3V3 which can cause current leakages when powering down using EN.
 #define SET_D8_LOW
 
-AB1805 *AB1805::instance = 0;
+AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {}
 
+AB1805::~AB1805() {}
 
-AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
-    instance = this;
-}
-
-AB1805::~AB1805() {
-
-}
-
-
-bool AB1805::setup(bool callBegin) {
+bool AB1805::setup(bool callBegin, int seconds) {
     if (callBegin) {
         wire.begin();
     }
 
-    if (detectChip()) {
-        updateWakeReason();
-
-        // If we've set the time in the RTC, then the WRTC bit will be 0.
-        // On power-up from cold, it's 1
-        if (isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC) && !Time.isValid()) {
-            // Set system clock from RTC
-            time_t time;
-
-            getRtcAsTime(time);
-            Time.setTime(time);
-
-            _log.info("set system clock from RTC %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
-        }
-        System.on(reset, systemEventStatic);
-        return true;
-    } else {
+    if (!detectChip()) {
         _log.error("failed to detect AB1805");
         return false;
     }
+
+    updateWakeReason();
+
+    if(!resetConfig()) {
+        _log.error("failed to reset config");
+        return false;
+    }
+    if(!setWDT(AB1805::WATCHDOG_MAX_SECONDS)) {
+        _log.error("failed to set watchdog");
+        return false;
+    }
+
+    return true;
 }
 
 void AB1805::loop() {
-    if (!timeSet && Time.isValid() && Particle.connected() && Particle.timeSyncedLast() != 0) {
-        timeSet = true;
-
-        time_t time = Time.now();
-        setRtcFromTime(time);
-
-        time = 0;
-        getRtcAsTime(time);
-        _log.info("set RTC from cloud %s", Time.format(time, TIME_FORMAT_DEFAULT).c_str());
-
-    }
-
     if (watchdogUpdatePeriod) {
         if (millis() - lastWatchdogMillis >= watchdogUpdatePeriod) {
             lastWatchdogMillis = millis();
@@ -105,7 +80,6 @@ bool AB1805::detectChip() {
 
     return finalResult;
 }
-
 
 bool AB1805::usingRCOscillator() {
     uint8_t value;
@@ -155,21 +129,30 @@ bool AB1805::resetConfig(uint32_t flags) {
 
     // Reset configuration registers to default values
     writeRegister(REG_STATUS, REG_STATUS_DEFAULT, false);
-    bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
-    writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false);
-    if(isRTCBitClear) { // Restore RTC bit to proper state
-        clearRegisterBit(REG_CTRL_1, REG_CTRL_1_WRTC, false);
-    }
-    writeRegister(REG_CTRL_2, REG_CTRL_2_DEFAULT, false);
-    writeRegister(REG_INT_MASK, REG_INT_MASK_DEFAULT, false);
-    writeRegister(REG_SQW, REG_SQW_DEFAULT, false);
-    writeRegister(REG_SLEEP_CTRL, REG_SLEEP_CTRL_DEFAULT, false);
+    // bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
 
+    // WRTC bit must be 1 to write to any time registers
+    // TODO: Not sure why we are clearing it if its already cleared? Should this be high or low?
+    // TODO: Verify that I can just write to the time registers
+    writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false);
+    // if(isRTCBitClear) { // Restore RTC bit to proper state
+    //     clearRegisterBit(REG_CTRL_1, REG_CTRL_1_WRTC, false);
+    // }
+
+    // nIRQ2 and FOUT behavior
+    // nIRQ2: OUTB (set in CTRL1 to 1)
+    // FOUT: nIRQ if at least one interrupt is enabled, else OUT
+    writeRegister(REG_CTRL_2, REG_CTRL_2_DEFAULT, false);
+    // default disables interrupts in the interrupt register
+    writeRegister(REG_INT_MASK, REG_INT_MASK_DEFAULT, false);
+    // default disables the square wave output
+    writeRegister(REG_SQW, REG_SQW_DEFAULT, false);
+    // default disables sleep mode
+    writeRegister(REG_SLEEP_CTRL, REG_SLEEP_CTRL_DEFAULT, false);
 
     if ((flags & RESET_PRESERVE_REPEATING_TIMER) != 0) {
         maskRegister(REG_TIMER_CTRL, ~REG_TIMER_CTRL_RPT_MASK, REG_TIMER_CTRL_DEFAULT & ~REG_TIMER_CTRL_RPT_MASK, false);
-    }
-    else {
+    } else {
         writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_DEFAULT, false);
     }
 
@@ -187,11 +170,17 @@ bool AB1805::resetConfig(uint32_t flags) {
     oscCtrl |= REG_OSC_CTRL_FOS;
 
     writeRegister(REG_CONFIG_KEY, 0xA1, false); // Needed to set config key to update REG_OSC_CTRL
-    writeRegister(REG_OSC_CTRL, oscCtrl, false);
+    writeRegister(REG_OSC_CTRL, oscCtrl, false); // default is to use XT oscillator
+
+    // default disables trickle charging
     writeRegister(REG_TRICKLE, REG_TRICKLE_DEFAULT, false);
+    // default battery reference voltage is 1.4 falling, 1.6 rising, our designs don't use a seperate battery voltage
     writeRegister(REG_BREF_CTRL, REG_BREF_CTRL_DEFAULT, false);
+    // default disables the autocalibration filter, which is fine for the XT oscillator
     writeRegister(REG_AFCTRL, REG_AFCTRL_DEFAULT, false);
+    // default is to keep IO interface enabled when running on battery mode (doesn't apply to our designs)
     writeRegister(REG_BATMODE_IO, REG_BATMODE_IO_DEFAULT, false);
+    // output control for vbatt and sleep mode (doesn't apply to our designs)
     writeRegister(REG_OCTRL, REG_OCTRL_DEFAULT, false);
 
     wire.unlock();
@@ -293,6 +282,10 @@ bool AB1805::setRtcFromTime(time_t time, bool lock) {
 }
 
 bool AB1805::setRtcFromTm(const struct tm *timeptr, bool lock) {
+    if(lastOscillatorMode || lastOscillatorFailure) {
+        _log.error("can't set time if the oscillator is not good lastOscillatorMode=%d, lastOscillatorFailure=%d", lastOscillatorMode, lastOscillatorFailure);
+        return false;
+    }
     static const char *errorMsg = "failure in setRtcFromTm %d";
     uint8_t array[8];
 
@@ -1098,20 +1091,14 @@ uint8_t AB1805::valueToBcd(int value) {
     return (uint8_t) ((tens << 4) | ones);
 }
 
-
-void AB1805::systemEvent(system_event_t event, int param) {
-    if (event == reset) {
-        if (watchdogSecs != 0) {
-            setWDT(0);
-        }
+bool AB1805::getOscillatorStatus(bool& of, bool& omode, bool lock) {
+    uint8_t value;
+    bool success = readRegister(AB1805::REG_OSC_STATUS, value, lock);
+    if (!success) {
+        return false;
     }
+    omode = value & AB1805::REG_OSC_STATUS_OMODE;
+    of = value & AB1805::REG_OSC_STATUS_OF;
+    return true;
 }
-
-// [static]
-void AB1805::systemEventStatic(system_event_t event, int param) {
-    if (instance) {
-        instance->systemEvent(event, param);
-    }
-}
-
 

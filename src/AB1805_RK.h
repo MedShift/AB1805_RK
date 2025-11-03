@@ -28,6 +28,11 @@ public:
         ALARM               //!< RTC clock alarm (periodic or single) trigged wake
     };
 
+
+
+    // Reads the osccilator state register and reutrns the oscillator and mode bits
+    bool getOscillatorStatus(bool& of, bool& omode, bool lock=true);
+
     /**
      * @brief Construct the AB1805 driver object
      *
@@ -51,7 +56,7 @@ public:
      *
      * @param callBegin Whether to call wire.begin(). Default is true.
      */
-    bool setup(bool callBegin = true);
+    bool setup(bool callBegin = true, int seconds=AB1805::WATCHDOG_MAX_SECONDS);
 
     /**
      * @brief Call this from main loop(). Should be called on every call to loop().
@@ -991,20 +996,6 @@ public:
 
 
 protected:
-    /**
-     * @brief Internal function used to handle system events
-     *
-     * We currently only handle the reset event to disable the WDT before reset so it
-     * won't trigger during a OTA firmware update.
-     */
-    void systemEvent(system_event_t event, int param);
-
-    /**
-     * @brief Static function passed to System.on
-     *
-     * AB1805 is a singleton so AB1805::instance is used to find the instance pointer.
-     */
-    static void systemEventStatic(system_event_t event, int param);
 
     /**
      * @brief Which I2C (TwoWire) interface to use. Usually Wire, is Wire1 on Tracker SoM
@@ -1042,11 +1033,6 @@ protected:
      * @brief How often to call updateWDT(-1) in milliseconds
      */
     unsigned long watchdogUpdatePeriod = 0;
-
-    /**
-     * @brief True if we've set the RTC from the cloud time
-     */
-    bool timeSet = false;
 
     /**
      * @brief The reason for wake. Set during setup()
