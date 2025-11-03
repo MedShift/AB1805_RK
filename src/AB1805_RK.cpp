@@ -139,12 +139,7 @@ bool AB1805::resetConfig(uint32_t flags) {
     // bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
 
     // WRTC bit must be 1 to write to any time registers
-    // TODO: Not sure why we are clearing it if its already cleared? Should this be high or low?
-    // TODO: Verify that I can just write to the time registers
     writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false);
-    // if(isRTCBitClear) { // Restore RTC bit to proper state
-    //     clearRegisterBit(REG_CTRL_1, REG_CTRL_1_WRTC, false);
-    // }
 
     // nIRQ2 and FOUT behavior
     // nIRQ2: OUTB (set in CTRL1 to 1)
