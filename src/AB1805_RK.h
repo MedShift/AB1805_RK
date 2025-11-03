@@ -30,7 +30,7 @@ public:
 
 
 
-    // Reads the osccilator state register and reutrns the oscillator and mode bits
+    // Reads the oscillator state register and returns the oscillator and mode bits
     bool getOscillatorStatus(bool& of, bool& omode, bool lock=true);
 
     /**

@@ -28,7 +28,7 @@ bool AB1805::setup(bool callBegin, int seconds) {
         _log.error("failed to reset config");
         return false;
     }
-    if(!setWDT(AB1805::WATCHDOG_MAX_SECONDS)) {
+    if(!setWDT(seconds)) {
         _log.error("failed to set watchdog");
         return false;
     }
