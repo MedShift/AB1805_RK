@@ -119,6 +119,35 @@ bool AB1805::usingRCOscillator() {
     }
 }
 
+bool AB1805::setSquareWaveOutput(bool enable, uint8_t frequency, bool lock) {
+    if(frequency > REG_SQW_SQFS_MAX) {
+        _log.error("setSquareWaveOutput: frequency %u is invalid", frequency);
+        return false;
+    }
+
+    // Get the current value
+    uint8_t val = 0;
+    bool success = readRegister(REG_SQW, val, lock);
+    if(!success) {
+        _log.error("setSquareWaveOutput: failed to read REG_SQW");
+        return false;
+    }
+    // Clear all but the reserved bits
+    val &= REG_SQW_CLEAR_MASK;
+    // Set the SQWE and SQFS bits and write
+    if(enable) {
+        val |= REG_SQW_SQWE;
+    }
+    val |= frequency;
+    // Write with readback
+    success = writeRegisterWithReadBack(REG_SQW, val, lock);
+    if(!success) {
+        _log.error("setSquareWaveOutput: writeRegisterWithReadBack failed");
+        return false;
+    }
+    return true;
+}
+
 bool AB1805::resetConfig(uint32_t flags) {
     _log.trace("resetConfig(0x%08lx)", flags);
 
@@ -128,12 +157,14 @@ bool AB1805::resetConfig(uint32_t flags) {
     writeRegister(REG_STATUS, REG_STATUS_DEFAULT, false);
     bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
     writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false);
-    if(isRTCBitClear) // Restore RTC bit to proper state
+    if(isRTCBitClear) { // Restore RTC bit to proper state
         clearRegisterBit(REG_CTRL_1, REG_CTRL_1_WRTC, false);
+    }
     writeRegister(REG_CTRL_2, REG_CTRL_2_DEFAULT, false);
     writeRegister(REG_INT_MASK, REG_INT_MASK_DEFAULT, false);
     writeRegister(REG_SQW, REG_SQW_DEFAULT, false);
     writeRegister(REG_SLEEP_CTRL, REG_SLEEP_CTRL_DEFAULT, false);
+
 
     if ((flags & RESET_PRESERVE_REPEATING_TIMER) != 0) {
         maskRegister(REG_TIMER_CTRL, ~REG_TIMER_CTRL_RPT_MASK, REG_TIMER_CTRL_DEFAULT & ~REG_TIMER_CTRL_RPT_MASK, false);
@@ -154,6 +185,7 @@ bool AB1805::resetConfig(uint32_t flags) {
         oscCtrl |= REG_OSC_CTRL_OSEL | REG_OSC_CTRL_FOS;
     }
     oscCtrl |= REG_OSC_CTRL_FOS;
+
     writeRegister(REG_CONFIG_KEY, 0xA1, false); // Needed to set config key to update REG_OSC_CTRL
     writeRegister(REG_OSC_CTRL, oscCtrl, false);
     writeRegister(REG_TRICKLE, REG_TRICKLE_DEFAULT, false);
@@ -803,6 +835,27 @@ bool AB1805::writeRegisters(uint8_t regAddr, const uint8_t *array, size_t num, b
         wire.unlock();
     }
     return bResult;
+}
+
+bool AB1805::writeRegisterWithReadBack(uint8_t regAddr, uint8_t value, bool lock) {
+    bool success = writeRegister(regAddr, value, lock);
+    if(!success) {
+        _log.error("writeRegisterWithReadBack: failed to write %u to register %u", value, regAddr);
+        return false;
+    }
+    uint8_t read = 0;
+
+    // Confirm the write by reading back the register
+    success = readRegister(regAddr, read, lock);
+    if(!success) {
+        _log.error("writeRegisterWithReadBack: failed to read from register %u", regAddr);
+        return false;
+    }
+    if(value != read) {
+        _log.error("writeRegisterWithReadBack: the read value %u does not match what was written %u for register %u", read, value, regAddr);
+        return false;
+    }
+    return true;
 }
 
 bool AB1805::maskRegister(uint8_t regAddr, uint8_t andValue, uint8_t orValue, bool lock) {
