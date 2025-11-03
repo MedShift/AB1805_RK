@@ -1042,6 +1042,9 @@ protected:
      */
     WakeReason wakeReason = WakeReason::UNKNOWN;
 
+    /**
+     * @brief Flag indicating whether setup() completed successfully
+     */
     bool isSetupFlag;
 
 };
