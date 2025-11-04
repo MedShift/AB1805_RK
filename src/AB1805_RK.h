@@ -56,6 +56,7 @@ public:
      *
      * @param callBegin Whether to call wire.begin(). Default is true.
      * @param seconds watchdog timer seconds
+     * @param xtCalibrationAdjVal calibration (adj) value for xt oscillator, 0 will clear previous XT calibration adjustments
      */
     bool setup(bool callBegin = true, int seconds=AB1805::WATCHDOG_MAX_SECONDS, int xtCalibrationAdjVal = 0);
 
@@ -1092,7 +1093,7 @@ protected:
 class WireStackMutexLock {
 public:
 	/**
-	 * @brief Call the mutexLock() method of publishQueue()
+	 * @brief Locks the mutex on constructor
 	 *
 	 * Instantiate this object on the stack so unlock can be done when the variable goes out of
 	 * scope, such as when exiting a block or function.
@@ -1102,7 +1103,7 @@ public:
 	}
 
 	/**
-	 * @brief Unlock the mutex on destructor
+	 * @brief Unlocks the mutex on destructor
 	 */
 	~WireStackMutexLock() {
 		wire.unlock();

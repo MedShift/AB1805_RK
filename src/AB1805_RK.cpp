@@ -79,7 +79,7 @@ bool AB1805::xtOscillatorDigitalCalibration(int adjVal) {
     WireStackMutexLock lock(wire);
     uint8_t val = 0;
     if(!readRegister(REG_OSC_STATUS, val, false)) {
-        _log.error("xtOscillatorDigitalCalibration: osc sttatus read failed");
+        _log.error("xtOscillatorDigitalCalibration: osc status read failed");
         return false;
     }
 
@@ -98,7 +98,7 @@ bool AB1805::xtOscillatorDigitalCalibration(int adjVal) {
     }
     _log.info("xtOscillatorDigitalCalibration: writing %u to calibration xt register", calibration);
     if(!writeRegisterWithReadBack(REG_CAL_XT, calibration, false)) {
-        _log.error("xtOscillatorDigitalCalibration: osc status write failed");
+        _log.error("xtOscillatorDigitalCalibration: cal xt write failed");
         return false;
     }
 
