@@ -12,7 +12,7 @@ AB1805::AB1805(TwoWire &wire, uint8_t i2cAddr) : wire(wire), i2cAddr(i2cAddr) {
 
 AB1805::~AB1805() {}
 
-bool AB1805::setup(bool callBegin, int seconds) {
+bool AB1805::setup(bool callBegin, int seconds, int xtCalibrationAdjVal) {
     if (callBegin) {
         wire.begin();
     }
@@ -33,7 +33,75 @@ bool AB1805::setup(bool callBegin, int seconds) {
         return false;
     }
 
+    if(!xtOscillatorDigitalCalibration(xtCalibrationAdjVal)) {
+        _log.error("failed to calibrate xt oscillator with %d", xtCalibrationAdjVal);
+        return false;
+    }
+
     isSetupFlag = true;
+    return true;
+}
+
+bool AB1805::xtOscillatorDigitalCalibration(int adjVal) {
+    uint8_t xtcal, cmdx;
+    int offsetx;
+    if (adjVal < -320 || adjVal >= 128) {
+        _log.error("xtOscillatorDigitalCalibration: value %d is not valid", adjVal);
+        return false;
+    }
+    if (adjVal < -256) {
+        xtcal = 3;
+        cmdx = 1;
+        offsetx = (adjVal + 192) / 2;
+    } else if (adjVal < -192) {
+        xtcal = 3;
+        cmdx = 0;
+        offsetx = adjVal + 192;
+    } else if (adjVal < -128) {
+        xtcal = 2;
+        cmdx = 0;
+        offsetx = adjVal + 128;
+    } else if (adjVal < -64) {
+        xtcal = 1;
+        cmdx = 0;
+        offsetx = adjVal + 64;
+    } else if (adjVal < 64) {
+        xtcal = 0;
+        cmdx = 0;
+        offsetx = adjVal;
+    } else {
+        xtcal = 0;
+        cmdx = 1;
+        offsetx = adjVal / 2;
+    }
+
+
+    WireStackMutexLock lock(wire);
+    uint8_t val = 0;
+    if(!readRegister(REG_OSC_STATUS, val, false)) {
+        _log.error("xtOscillatorDigitalCalibration: osc sttatus read failed");
+        return false;
+    }
+
+    xtcal <<= REG_OSC_STATUS_XTCAL_OFFSET;
+    uint8_t newVal = val & ~REG_OSC_STATUS_XTCAL; // clear the XTCAL bits
+    newVal |= xtcal;
+    _log.info("xtOscillatorDigitalCalibration: writing %u to oscillator status register, old value %u", newVal, val);
+    if(!writeRegisterWithReadBack(REG_OSC_STATUS, newVal, false)) {
+        _log.error("xtOscillatorDigitalCalibration: osc status write failed");
+        return false;
+    }
+
+    uint8_t calibration = (uint8_t)offsetx & 0x7F;
+    if (cmdx) {
+        calibration |= 0x80;
+    }
+    _log.info("xtOscillatorDigitalCalibration: writing %u to calibration xt register", calibration);
+    if(!writeRegisterWithReadBack(REG_CAL_XT, calibration, false)) {
+        _log.error("xtOscillatorDigitalCalibration: osc status write failed");
+        return false;
+    }
+
     return true;
 }
 
@@ -132,15 +200,18 @@ bool AB1805::setSquareWaveOutput(bool enable, uint8_t frequency, bool lock) {
 bool AB1805::resetConfig(uint32_t flags) {
     _log.trace("resetConfig(0x%08lx)", flags);
 
-    wire.lock();
+    WireStackMutexLock lock(wire);
 
     // Reset configuration registers to default values
-    writeRegister(REG_STATUS, REG_STATUS_DEFAULT, false);
-    // bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
+    if(!writeRegister(REG_STATUS, REG_STATUS_DEFAULT, false)) {
+        return false;
+    }
 
     // Writing default to CTRL1 sets the WRTC bit, restore it to its original state
     bool isRTCBitClear = isBitClear(REG_CTRL_1, REG_CTRL_1_WRTC, false);
-    writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false);
+    if(!writeRegister(REG_CTRL_1, REG_CTRL_1_DEFAULT, false)) {
+        return false;
+    }
     if(isRTCBitClear) { // Restore RTC bit to proper state
         clearRegisterBit(REG_CTRL_1, REG_CTRL_1_WRTC, false);
     }
@@ -148,23 +219,41 @@ bool AB1805::resetConfig(uint32_t flags) {
     // nIRQ2 and FOUT behavior
     // nIRQ2: OUTB (set in CTRL1 to 1)
     // FOUT: nIRQ if at least one interrupt is enabled, else OUT
-    writeRegister(REG_CTRL_2, REG_CTRL_2_DEFAULT, false);
+    if(!writeRegister(REG_CTRL_2, REG_CTRL_2_DEFAULT, false)) {
+        return false;
+    }
     // default disables interrupts in the interrupt register
-    writeRegister(REG_INT_MASK, REG_INT_MASK_DEFAULT, false);
+    if(!writeRegister(REG_INT_MASK, REG_INT_MASK_DEFAULT, false)) {
+        return false;
+    }
     // default disables the square wave output
-    writeRegister(REG_SQW, REG_SQW_DEFAULT, false);
+    if(!writeRegister(REG_SQW, REG_SQW_DEFAULT, false)) {
+        return false;
+    }
     // default disables sleep mode
-    writeRegister(REG_SLEEP_CTRL, REG_SLEEP_CTRL_DEFAULT, false);
-
-    if ((flags & RESET_PRESERVE_REPEATING_TIMER) != 0) {
-        maskRegister(REG_TIMER_CTRL, ~REG_TIMER_CTRL_RPT_MASK, REG_TIMER_CTRL_DEFAULT & ~REG_TIMER_CTRL_RPT_MASK, false);
-    } else {
-        writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_DEFAULT, false);
+    if(!writeRegister(REG_SLEEP_CTRL, REG_SLEEP_CTRL_DEFAULT, false)) {
+        return false;
     }
 
-    writeRegister(REG_TIMER, REG_TIMER_DEFAULT, false);
-    writeRegister(REG_TIMER_INITIAL, REG_TIMER_INITIAL_DEFAULT, false);
-    writeRegister(REG_WDT, REG_WDT_DEFAULT, false);
+    if ((flags & RESET_PRESERVE_REPEATING_TIMER) != 0) {
+        if(!maskRegister(REG_TIMER_CTRL, ~REG_TIMER_CTRL_RPT_MASK, REG_TIMER_CTRL_DEFAULT & ~REG_TIMER_CTRL_RPT_MASK, false)) {
+            return false;
+        }
+    } else {
+        if(!writeRegister(REG_TIMER_CTRL, REG_TIMER_CTRL_DEFAULT, false)) {
+            return false;
+        }
+    }
+
+    if(!writeRegister(REG_TIMER, REG_TIMER_DEFAULT, false)) {
+        return false;
+    }
+    if(!writeRegister(REG_TIMER_INITIAL, REG_TIMER_INITIAL_DEFAULT, false)) {
+        return false;
+    }
+    if(!writeRegister(REG_WDT, REG_WDT_DEFAULT, false)) {
+        return false;
+    }
 
     uint8_t oscCtrl = REG_OSC_CTRL_DEFAULT;
     if ((flags & RESET_DISABLE_XT) != 0) {
@@ -175,21 +264,33 @@ bool AB1805::resetConfig(uint32_t flags) {
     }
     oscCtrl |= REG_OSC_CTRL_FOS;
 
-    writeRegister(REG_CONFIG_KEY, 0xA1, false); // Needed to set config key to update REG_OSC_CTRL
-    writeRegister(REG_OSC_CTRL, oscCtrl, false); // default is to use XT oscillator
+    if(!writeRegister(REG_CONFIG_KEY, 0xA1, false)) { // Needed to set config key to update REG_OSC_CTRL
+        return false;
+    }
+    if(!writeRegister(REG_OSC_CTRL, oscCtrl, false)) { // default is to use XT oscillator
+        return false;
+    }
 
     // default disables trickle charging
-    writeRegister(REG_TRICKLE, REG_TRICKLE_DEFAULT, false);
+    if(!writeRegister(REG_TRICKLE, REG_TRICKLE_DEFAULT, false)) {
+        return false;
+    }
     // default battery reference voltage is 1.4 falling, 1.6 rising, our designs don't use a seperate battery voltage
-    writeRegister(REG_BREF_CTRL, REG_BREF_CTRL_DEFAULT, false);
+    if(!writeRegister(REG_BREF_CTRL, REG_BREF_CTRL_DEFAULT, false)) {
+        return false;
+    }
     // default disables the autocalibration filter, which is fine for the XT oscillator
-    writeRegister(REG_AFCTRL, REG_AFCTRL_DEFAULT, false);
+    if(!writeRegister(REG_AFCTRL, REG_AFCTRL_DEFAULT, false)) {
+        return false;
+    }
     // default is to keep IO interface enabled when running on battery mode (doesn't apply to our designs)
-    writeRegister(REG_BATMODE_IO, REG_BATMODE_IO_DEFAULT, false);
+    if(!writeRegister(REG_BATMODE_IO, REG_BATMODE_IO_DEFAULT, false)) {
+        return false;
+    }
     // output control for vbatt and sleep mode (doesn't apply to our designs)
-    writeRegister(REG_OCTRL, REG_OCTRL_DEFAULT, false);
-
-    wire.unlock();
+    if(!writeRegister(REG_OCTRL, REG_OCTRL_DEFAULT, false)) {
+        return false;
+    }
 
     return true;
 }

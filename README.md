@@ -117,7 +117,7 @@ void setup() {
     // Enabling an out of memory handler is a good safety tip. If we run out of
     // memory a System.reset() is done.
     System.on(out_of_memory, outOfMemoryHandler);
-    
+
     // Optional: Enable to make it easier to see debug USB serial messages at startup
     waitFor(Serial.isConnected, 15000);
     delay(1000);
@@ -133,11 +133,11 @@ void setup() {
 
     // Reset the AB1805 configuration to default values
     ab1805.resetConfig();
-    
-    // If using the supercap, enable trickle charging here. 
+
+    // If using the supercap, enable trickle charging here.
     // Do not enable this for the AB1805-Li example!
     // ab1805.setTrickle(AB1805::REG_TRICKLE_DIODE_0_3 | AB1805::REG_TRICKLE_ROUT_3K);
-    
+
     // Enable watchdog
     ab1805.setWDT(AB1805::WATCHDOG_MAX_SECONDS);
 
@@ -158,7 +158,7 @@ void loop() {
         System.reset();
     }
 
-    // Monitor the cloud connection state and do a deep power down if a 
+    // Monitor the cloud connection state and do a deep power down if a
     // failure to connect exceeds connectMaxTime (typically 11 minutes).
     if (Particle.connected()) {
         if (!cloudConnected) {
@@ -282,7 +282,7 @@ This example has the device wake up once per hour and publish a value. It illust
 - Using the 256-byte non-volatile RAM in the RTC.
 - An out of memory handler, which will reset the device if a RAM allocation fails.
 - A failure to connect detector, so if it takes longer than 11 minutes to connect to the cloud, a deep power down for 30 seconds is done to hopefully reset things complete.
- 
+
 ### 04-selftest
 
 The self-test code is used to do a quick check of the hardware to make sure it's visible by I2C. It's helpful when you've soldered up a new board to make sure the AB1805 at least has working I2C communications.
