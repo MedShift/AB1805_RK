@@ -1109,6 +1109,9 @@ public:
 		wire.unlock();
 	}
 
+    WireStackMutexLock(const WireStackMutexLock&) = delete;
+    WireStackMutexLock& operator=(const WireStackMutexLock&) = delete;
+
 	TwoWire& wire;
 };
 

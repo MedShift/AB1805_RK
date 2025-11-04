@@ -75,8 +75,8 @@ bool AB1805::xtOscillatorDigitalCalibration(int adjVal) {
         offsetx = adjVal / 2;
     }
 
-
     WireStackMutexLock lock(wire);
+
     uint8_t val = 0;
     if(!readRegister(REG_OSC_STATUS, val, false)) {
         _log.error("xtOscillatorDigitalCalibration: osc status read failed");
