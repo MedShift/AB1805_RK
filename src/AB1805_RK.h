@@ -56,8 +56,9 @@ public:
      *
      * @param callBegin Whether to call wire.begin(). Default is true.
      * @param seconds watchdog timer seconds
+     * @param xtCalibrationAdjVal calibration (adj) value for xt oscillator, 0 will clear previous XT calibration adjustments
      */
-    bool setup(bool callBegin = true, int seconds=AB1805::WATCHDOG_MAX_SECONDS);
+    bool setup(bool callBegin = true, int seconds=AB1805::WATCHDOG_MAX_SECONDS, int xtCalibrationAdjVal = 0);
 
     bool isSetup();
 
@@ -87,6 +88,38 @@ public:
         pinMode(foutPin, INPUT);
         return *this;
     };
+
+
+    /**
+     * @brief Sets the XT oscillator calibration value.
+     * Will lock the AB1805 wire resource
+     *
+     * Taken from Particle Device OS 6.3.0, hal/src/tracker/am18x5.cpp
+     *
+     * The XT oscillator calibration value is determined by the following process:
+     * 1. Set the OFFSETX, CMDX and XTCAL register fields to 0 to ensure calibration is not occurring.
+     * 2. Select the XT oscillator by setting the OSEL bit to 0.
+     * 3. Configure a 32768 Hz frequency square wave output on one of the output pins.
+     * 4. Precisely measure the exact frequency, Fmeas, at the output pin in Hz.
+     * 5. Compute the adjustment value required in ppm as ((32768 – Fmeas)*1000000)/32768 = PAdj
+     * 6. Compute the adjustment value in steps as PAdj/(1000000/2^19) = PAdj/(1.90735) = Adj
+     * 7. If Adj < -320, the XT frequency is too high to be calibrated
+     * 8. Else if Adj < -256, set XTCAL = 3, CMDX = 1, OFFSETX = (Adj + 192) / 2
+     * 9. Else if Adj < -192, set XTCAL = 3, CMDX = 0, OFFSETX = Adj + 192
+     * 10. Else if Adj < -128, set XTCAL = 2, CMDX = 0, OFFSETX = Adj + 128
+     * 11. Else if Adj < -64, set XTCAL = 1, CMDX = 0, OFFSETX = Adj + 64
+     * 12. Else if Adj < 64, set XTCAL = 0, CMDX = 0, OFFSETX = Adj
+     * 13. Else if Adj < 128, set XTCAL = 0, CMDX = 1, OFFSETX = Adj/2
+     * 14. Else the XT frequency is too low to be calibrated
+     *
+     * For example, a measured frequency of 32,777 would become
+     * ((32,768 - 32,777) * 1,000,000)/32,768) = PAdj = -274.658
+     * PAdj/(1.90735) = Adj = -274.658 / 1.90735 = -144 (this is adjVal)
+     * XTCAL = 2, CMDX = 0, OFFSETX (2's complement binary (1111'0000))= -16
+     *
+     * @return true on success
+     */
+    bool xtOscillatorDigitalCalibration(int adjVal);
 
     /**
      * @brief Checks the I2C bus to make sure there is an AB1805 present
@@ -928,6 +961,7 @@ public:
     static const uint8_t   REG_OSC_CTRL_ACIE        = 0x01;      //!< Oscillator control, auto-calibration fail interrupt enable
     static const uint8_t   REG_OSC_CTRL_DEFAULT     = 0x00;      //!< Oscillator control, default value
     static const uint8_t REG_OSC_STATUS             = 0x1d;      //!< Oscillator status register
+    static const uint8_t   REG_OSC_STATUS_XTCAL_OFFSET = 6;      //!< Oscillator status register, extended crystal calibration offset
     static const uint8_t   REG_OSC_STATUS_XTCAL     = 0xc0;      //!< Oscillator status register, extended crystal calibration
     static const uint8_t   REG_OSC_STATUS_LKO2      = 0x20;      //!< Oscillator status register, lock OUT2
     static const uint8_t   REG_OSC_STATUS_OMODE     = 0x10;      //!< Oscillator status register, oscillator mode (read-only)
@@ -1047,6 +1081,38 @@ protected:
      */
     bool isSetupFlag;
 
+};
+
+/**
+ * @brief Class to automatically lock and unlock the mutex based on creation on the stack
+ *
+ * This is used to make sure the mutex is always unlocked, for example if there is a return
+ * statement in the middle of the function. When the stack variable goes out of scope it will
+ * always unlock the mutex.
+ */
+class WireStackMutexLock {
+public:
+	/**
+	 * @brief Locks the mutex on constructor
+	 *
+	 * Instantiate this object on the stack so unlock can be done when the variable goes out of
+	 * scope, such as when exiting a block or function.
+	 */
+	WireStackMutexLock(TwoWire& wire) : wire(wire) {
+		wire.lock();
+	}
+
+	/**
+	 * @brief Unlocks the mutex on destructor
+	 */
+	~WireStackMutexLock() {
+		wire.unlock();
+	}
+
+    WireStackMutexLock(const WireStackMutexLock&) = delete;
+    WireStackMutexLock& operator=(const WireStackMutexLock&) = delete;
+
+	TwoWire& wire;
 };
 
 #endif /* __AB1805RK_H */
