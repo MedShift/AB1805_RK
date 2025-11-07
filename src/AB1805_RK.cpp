@@ -255,19 +255,21 @@ bool AB1805::resetConfig(uint32_t flags) {
         return false;
     }
 
-    uint8_t oscCtrl = REG_OSC_CTRL_DEFAULT;
+    uint8_t oscCtrl = REG_OSC_CTRL_DEFAULT; 
     if ((flags & RESET_DISABLE_XT) != 0) {
         // If disabling XT oscillator, set OSEL to 1 (RC oscillator)
         // Also enable FOS so if the XT oscillator fails, it will switch to RC (just in case)
         // and ACAL to 0 (however REG_OSC_CTRL_DEFAULT already sets ACAL to 0)
         oscCtrl |= REG_OSC_CTRL_OSEL | REG_OSC_CTRL_FOS;
     }
-    oscCtrl |= REG_OSC_CTRL_FOS;
+
+    // RC Failover + RC autocalibration every 512 seconds
+    oscCtrl |= REG_OSC_CTRL_FOS | REG_OSC_CTRL_ACAL;
 
     if(!writeRegister(REG_CONFIG_KEY, 0xA1, false)) { // Needed to set config key to update REG_OSC_CTRL
         return false;
     }
-    if(!writeRegister(REG_OSC_CTRL, oscCtrl, false)) { // default is to use XT oscillator
+    if(!writeRegisterWithReadBack(REG_OSC_CTRL, oscCtrl, false)) { // default is to use XT oscillator
         return false;
     }
 
@@ -279,8 +281,11 @@ bool AB1805::resetConfig(uint32_t flags) {
     if(!writeRegister(REG_BREF_CTRL, REG_BREF_CTRL_DEFAULT, false)) {
         return false;
     }
-    // default disables the autocalibration filter, which is fine for the XT oscillator
-    if(!writeRegister(REG_AFCTRL, REG_AFCTRL_DEFAULT, false)) {
+    // Enables the AF pin, which is used for the autocalibration filter
+    if(!writeRegister(REG_CONFIG_KEY, REG_CONFIG_KEY_OTHER, false)) {
+        return false;
+    }
+    if(!writeRegisterWithReadBack(REG_AFCTRL, REG_AFCTRL_ENABLE, false)) {
         return false;
     }
     // default is to keep IO interface enabled when running on battery mode (doesn't apply to our designs)
