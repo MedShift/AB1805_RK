@@ -259,7 +259,7 @@ bool AB1805::resetConfig(uint32_t flags) {
     if ((flags & RESET_DISABLE_XT) != 0) {
         // If disabling XT oscillator, set OSEL to 1 (RC oscillator)
         // Also enable FOS so if the XT oscillator fails, it will switch to RC (just in case)
-        // and ACAL to 0 (however REG_OSC_CTRL_DEFAULT already sets ACAL to 0)
+        // Note: ACAL (autocalibration) is enabled below regardless of XT oscillator state.
         oscCtrl |= REG_OSC_CTRL_OSEL | REG_OSC_CTRL_FOS;
     }
 
