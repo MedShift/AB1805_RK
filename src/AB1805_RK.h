@@ -31,7 +31,7 @@ public:
 
 
     // Reads the oscillator state register and returns the oscillator and mode bits
-    bool getOscillatorStatus(bool& of, bool& omode, bool lock=true);
+    bool getOscillatorStatus(bool& of, bool& omode, bool& acf, bool lock=true);
 
     /**
      * @brief Construct the AB1805 driver object
