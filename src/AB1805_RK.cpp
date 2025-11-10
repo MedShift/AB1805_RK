@@ -264,15 +264,6 @@ bool AB1805::resetConfig(uint32_t flags) {
     }
 
     // RC Failover + RC autocalibration every 512 seconds
-    oscCtrl |= REG_OSC_CTRL_FOS;
-
-    if(!writeRegister(REG_CONFIG_KEY, REG_CONFIG_KEY_OSC_CTRL, false)) { // Needed to set config key to update REG_OSC_CTRL
-        return false;
-    }
-    if(!writeRegisterWithReadBack(REG_OSC_CTRL, oscCtrl, false)) { // default is to use XT oscillator
-        return false;
-    }
-
     oscCtrl |= REG_OSC_CTRL_FOS | REG_OSC_CTRL_ACAL;
 
     if(!writeRegister(REG_CONFIG_KEY, REG_CONFIG_KEY_OSC_CTRL, false)) { // Needed to set config key to update REG_OSC_CTRL
