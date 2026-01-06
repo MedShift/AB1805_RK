@@ -138,6 +138,7 @@ bool AB1805::detectChip() {
 
                 // May just want to return false here
             }
+            delay(1);
         }
     }
 
@@ -1079,6 +1080,7 @@ bool AB1805::readRam(size_t ramAddr, uint8_t *data, size_t dataLen, bool lock) {
         ramAddr += count;
         dataLen -= count;
         data += count;
+        delay(1);
     }
 
     if (lock) {
@@ -1131,6 +1133,7 @@ bool AB1805::writeRam(size_t ramAddr, const uint8_t *data, size_t dataLen, bool 
         ramAddr += count;
         dataLen -= count;
         data += count;
+        delay(1);
     }
     if (lock) {
         wire.unlock();
